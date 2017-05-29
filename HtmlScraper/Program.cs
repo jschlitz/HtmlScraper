@@ -20,6 +20,8 @@ namespace HtmlScraper
         var baseUrl = args[0];
         var query = args[1];
 
+
+
         var targetDir = args.Length >=3 ? args[2] : System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
         if (!Directory.Exists(targetDir)) throw new Exception($"Target directory does not exist: \r{targetDir}");
         targetDir = Path.Combine(targetDir, query);
@@ -30,8 +32,10 @@ namespace HtmlScraper
         var posts = new Dictionary<string, bool>();
         pages[CombineUri(baseUrl, @"/posts?tags=" + query)] = false;
 
+        Console.WriteLine("Getting pages...");
         while (pages.Any(kvp=>!kvp.Value))
         {
+          Console.Write("-");
           var queryUri = pages.First(kvp => !kvp.Value).Key;
 
           using (var stream = client.OpenRead(queryUri))
@@ -39,13 +43,11 @@ namespace HtmlScraper
             var doc = new HtmlDocument();
             doc.Load(stream);
 
-            Console.WriteLine("-------- pages --------");
             foreach (var item in GetPagination(doc, baseUrl))
             {
               if (!pages.ContainsKey(item)) pages[item] = false; 
             }
 
-            Console.WriteLine("-------- posts --------");
             foreach (var item in GetPostPages(doc, baseUrl, query))
             {
               if (!posts.ContainsKey(item)) posts[item] = false;
@@ -55,8 +57,14 @@ namespace HtmlScraper
           pages[queryUri] = true;
         }
 
-
         VisitPosts(posts, client, baseUrl, targetDir);
+        while (posts.Any(kvp=>!kvp.Value))
+        {
+          Console.WriteLine();
+          Console.WriteLine("Some files failed to download. Try again? [y/N]");
+          if (Console.ReadKey().ToString().ToUpper() != "Y") break;
+          VisitPosts(posts, client, baseUrl, targetDir);
+        }
 
         Console.ReadKey(true);
 
@@ -65,7 +73,9 @@ namespace HtmlScraper
 
     private static void VisitPosts(Dictionary<string, bool> posts, System.Net.WebClient client, string baseUrl, string targetDir)
     {
-      foreach (var item in posts.Where(kvp => !kvp.Value).Select(kvp => kvp.Key).ToArray())
+      string[] postUrls = posts.Where(kvp => !kvp.Value).Select(kvp => kvp.Key).ToArray();
+      Console.WriteLine($"{postUrls.Length} items.");
+      foreach (var item in postUrls)
       {
         using (var stream = client.OpenRead(item))
         {
@@ -76,11 +86,24 @@ namespace HtmlScraper
           var target = n.GetAttributeValue("src", "");
           if (string.IsNullOrEmpty(target)) continue;
           target = CombineUri(baseUrl, target);
-          //client.DownloadFile(target, Path.Combine(targetDir, Path.GetFileName(target).Trim('_')));
-          Console.WriteLine(Path.Combine(targetDir, Path.GetFileName(target).Trim('_')));
-          posts[item] = true;//visited
+          var fileName = Path.Combine(targetDir, Path.GetFileName(target).Trim('_'));
+          try
+          {
+            if (!File.Exists(fileName)) //don't re-download
+            {
+              client.DownloadFile(target, fileName);
+              //Console.WriteLine(Path.Combine(targetDir, fileName);
+              Thread.Sleep(222); //don't overload server.
+            }
+            posts[item] = true;//visited
+            Console.Write(".");
 
-          Thread.Sleep(222);
+          }
+          catch (Exception ex)
+          {
+            Console.WriteLine();
+            Console.WriteLine($"Failed with {target}:\r{ex.Message}");
+          }
         }
       }
     }
