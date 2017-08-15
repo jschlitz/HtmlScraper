@@ -18,7 +18,13 @@ namespace HtmlScraper
       using (var client = new System.Net.WebClient())
       {
         var baseUrl = args[0];
-        var query = args[1];
+         var query = args[1];
+        if (string.IsNullOrEmpty(query))
+        {
+          Console.WriteLine("usage: HtmlScraper [search_term]. Press any key to exit.");
+          Console.ReadKey();
+          return;
+        }
 
 
         var targetDir = args.Length >=3 ? args[2] : System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
@@ -26,14 +32,15 @@ namespace HtmlScraper
         targetDir = Path.Combine(targetDir, query);
         Directory.CreateDirectory(targetDir);
 
-        var alreadyRead = new string[0];
+        var alreadyRead = new List<string>();
         if (File.Exists(Path.Combine(targetDir, "Dowloaded.txt")))
         {
           using (StreamReader sr = new StreamReader(Path.Combine(targetDir, "Dowloaded.txt")))
-            alreadyRead = sr.ReadToEnd().Split('\r').Select(s => s.Trim()).ToArray();
+            alreadyRead = sr.ReadToEnd().Split('\r').Select(s => s.Trim()).ToList();
         }
+        alreadyRead.AddRange(Directory.GetFiles(targetDir).Select(s => Path.GetFileName(s)));
 
-          var pages = new Dictionary<string, bool>();
+        var pages = new Dictionary<string, bool>();
         var posts = new Dictionary<string, bool>();
         pages[CombineUri(baseUrl, @"/posts?tags=" + query)] = false;
 
@@ -72,7 +79,7 @@ namespace HtmlScraper
           VisitPosts(posts, client, baseUrl, targetDir, alreadyRead);
         }
 
-        //now update the list of files here
+        //now update the list of files here.
         using (StreamWriter sw = new StreamWriter(Path.Combine(targetDir, "Dowloaded.txt")))
           sw.Write(string.Join(Environment.NewLine, Directory.GetFiles(targetDir).Select(s => Path.GetFileName(s))));
 
@@ -82,7 +89,7 @@ namespace HtmlScraper
       }
     }
 
-    private static void VisitPosts(Dictionary<string, bool> posts, System.Net.WebClient client, string baseUrl, string targetDir, string[] alreadyRead)
+    private static void VisitPosts(Dictionary<string, bool> posts, System.Net.WebClient client, string baseUrl, string targetDir, ICollection<string> alreadyRead)
     {
       string[] postUrls = posts.Where(kvp => !kvp.Value).Select(kvp => kvp.Key).ToArray();
       Console.WriteLine($"{postUrls.Length} items.");
