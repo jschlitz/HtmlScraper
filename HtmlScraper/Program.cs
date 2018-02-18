@@ -18,7 +18,7 @@ namespace HtmlScraper
       using (var client = new System.Net.WebClient())
       {
         var baseUrl = args[0];
-         var query = args[1];
+        var query = args[1];
         if (string.IsNullOrEmpty(query))
         {
           Console.WriteLine("usage: HtmlScraper [search_term]. Press any key to exit.");
@@ -91,6 +91,7 @@ namespace HtmlScraper
 
     private static void VisitPosts(Dictionary<string, bool> posts, System.Net.WebClient client, string baseUrl, string targetDir, ICollection<string> alreadyRead)
     {
+
       string[] postUrls = posts.Where(kvp => !kvp.Value).Select(kvp => kvp.Key).ToArray();
       Console.WriteLine($"{postUrls.Length} items.");
       foreach (var item in postUrls)
@@ -103,8 +104,12 @@ namespace HtmlScraper
           var n = doc.DocumentNode.SelectSingleNode("//img[@id='image']");
           var target = n.GetAttributeValue("src", "");
           if (string.IsNullOrEmpty(target)) continue;
-          target = CombineUri(baseUrl, target);
+          //sometimes they have complete urls instead of relative ones...
+          if(!CheckUri(target))
+            target = CombineUri(baseUrl, target);
+
           var fileName = Path.GetFileName(target).Trim('_');
+
           if (alreadyRead.Contains(fileName)) //don't re-download
           {
             FileDone(posts, item);
@@ -119,7 +124,7 @@ namespace HtmlScraper
           try
           {
             client.DownloadFile(target, fileName);
-            //Console.WriteLine(Path.Combine(targetDir, fileName);
+            //Console.WriteLine(fileName);
             FileDone(posts, item);
             Thread.Sleep(123); //don't overload server.
           }
@@ -130,6 +135,13 @@ namespace HtmlScraper
           }
         }
       }
+    }
+
+    private static bool CheckUri(string s)
+    {
+      Uri uriResult;
+      return Uri.TryCreate(s, UriKind.Absolute, out uriResult)
+          && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
     }
 
     private static void FileDone(Dictionary<string, bool> posts, string item)
