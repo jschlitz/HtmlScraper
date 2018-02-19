@@ -102,6 +102,7 @@ namespace HtmlScraper
           doc.Load(stream);
 
           var n = doc.DocumentNode.SelectSingleNode("//img[@id='image']");
+          if (n == null) continue; //rarely an swf file or something.
           var target = n.GetAttributeValue("src", "");
           if (string.IsNullOrEmpty(target)) continue;
           //sometimes they have complete urls instead of relative ones...
