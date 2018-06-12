@@ -27,18 +27,20 @@ namespace HtmlScraper
         }
 
 
-        var targetDir = args.Length >=3 ? args[2] : System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-        if (!Directory.Exists(targetDir)) throw new Exception($"Target directory does not exist: \r{targetDir}");
-        targetDir = Path.Combine(targetDir, query);
+        var baseDir = args.Length >=3 ? args[2] : System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
+        if (!Directory.Exists(baseDir)) throw new Exception($"Target directory does not exist: \r{baseDir}");
+        baseDir = Path.Combine(baseDir, query);
+        Directory.CreateDirectory(baseDir);
+        var targetDir = Path.Combine(baseDir, DateTime.Now.ToString("yyMMdd"));
         Directory.CreateDirectory(targetDir);
 
         var alreadyRead = new List<string>();
-        if (File.Exists(Path.Combine(targetDir, "Dowloaded.txt")))
+        if (File.Exists(Path.Combine(baseDir, "Dowloaded.txt")))
         {
-          using (StreamReader sr = new StreamReader(Path.Combine(targetDir, "Dowloaded.txt")))
+          using (StreamReader sr = new StreamReader(Path.Combine(baseDir, "Dowloaded.txt")))
             alreadyRead = sr.ReadToEnd().Split('\r').Select(s => s.Trim()).ToList();
         }
-        alreadyRead.AddRange(Directory.GetFiles(targetDir).Select(s => Path.GetFileName(s)));
+        alreadyRead.AddRange(Directory.GetFiles(baseDir, "*.*", SearchOption.AllDirectories).Select(s => Path.GetFileName(s)));
 
         var pages = new Dictionary<string, bool>();
         var posts = new Dictionary<string, bool>();
@@ -80,8 +82,8 @@ namespace HtmlScraper
         }
 
         //now update the list of files here.
-        using (StreamWriter sw = new StreamWriter(Path.Combine(targetDir, "Dowloaded.txt")))
-          sw.Write(string.Join(Environment.NewLine, Directory.GetFiles(targetDir).Select(s => Path.GetFileName(s))));
+        using (StreamWriter sw = new StreamWriter(Path.Combine(baseDir, "Dowloaded.txt")))
+          sw.Write(string.Join(Environment.NewLine, Directory.GetFiles(baseDir, "*.*", SearchOption.AllDirectories).Select(s => Path.GetFileName(s))));
 
         Console.WriteLine();
         Console.WriteLine("Done.");
