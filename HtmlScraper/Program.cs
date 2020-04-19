@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Web;
 using HtmlAgilityPack;
 using System.Threading;
+using System.Net;
 
 namespace HtmlScraper
 {
@@ -17,8 +18,10 @@ namespace HtmlScraper
 
       using (var client = new System.Net.WebClient())
       {
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
         var baseUrl = args[0];
-        var query = args[1];
+         var query = args[1];
         if (string.IsNullOrEmpty(query))
         {
           Console.WriteLine("usage: HtmlScraper [search_term]. Press any key to exit.");
@@ -100,32 +103,32 @@ namespace HtmlScraper
       {
         using (var stream = client.OpenRead(item))
         {
-          var doc = new HtmlDocument();
-          doc.Load(stream);
-
-          var n = doc.DocumentNode.SelectSingleNode("//img[@id='image']");
-          if (n == null) continue; //rarely an swf file or something.
-          var target = n.GetAttributeValue("src", "");
-          if (string.IsNullOrEmpty(target)) continue;
-          //sometimes they have complete urls instead of relative ones...
-          if(!CheckUri(target))
-            target = CombineUri(baseUrl, target);
-
-          var fileName = Path.GetFileName(target).Trim('_');
-
-          if (alreadyRead.Contains(fileName)) //don't re-download
-          {
-            FileDone(posts, item);
-            continue;
-          }
-          fileName = Path.Combine(targetDir, fileName);
-          if (File.Exists(fileName))
-          {
-            FileDone(posts, item);
-            continue;
-          }
           try
           {
+            var doc = new HtmlDocument();
+            doc.Load(stream);
+
+            var n = doc.DocumentNode.SelectSingleNode("//img[@id='image']");
+            if (n == null) continue; //rarely an swf file or something.
+            var target = n.GetAttributeValue("src", "");
+            if (string.IsNullOrEmpty(target)) continue;
+            //sometimes they have complete urls instead of relative ones...
+            if (!CheckUri(target))
+              target = CombineUri(baseUrl, target);
+
+            var fileName = Path.GetFileName(target).Trim('_');
+
+            if (alreadyRead.Contains(fileName)) //don't re-download
+            {
+              FileDone(posts, item);
+              continue;
+            }
+            fileName = Path.Combine(targetDir, fileName);
+            if (File.Exists(fileName))
+            {
+              FileDone(posts, item);
+              continue;
+            }
             client.DownloadFile(target, fileName);
             //Console.WriteLine(fileName);
             FileDone(posts, item);
@@ -134,7 +137,7 @@ namespace HtmlScraper
           catch (Exception ex)
           {
             Console.WriteLine();
-            Console.WriteLine($"Failed with {target}:\r{ex.Message}");
+            Console.WriteLine($"Failed with {item}:\r{ex.Message}");
           }
         }
       }
