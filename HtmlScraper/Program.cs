@@ -159,7 +159,7 @@ namespace HtmlScraper
 
     private static string[] GetPagination(HtmlDocument doc, string baseUrl)
     {
-      var links = doc.DocumentNode.SelectNodes("//div[@class='paginator']/menu/li/a");
+      var links = doc.DocumentNode.SelectNodes("//div[contains(@class,'paginator')]//a").ToList();
       return links
         .Select(hn => CombineUri(baseUrl, HttpUtility.HtmlDecode(hn.Attributes["href"].Value)))
         .ToArray();
