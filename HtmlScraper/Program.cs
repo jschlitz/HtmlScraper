@@ -21,7 +21,7 @@ namespace HtmlScraper
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
         var baseUrl = args[0];
-         var query = args[1];
+        var query = args[1];
         if (string.IsNullOrEmpty(query))
         {
           Console.WriteLine("usage: HtmlScraper [search_term]. Press any key to exit.");
@@ -178,7 +178,7 @@ namespace HtmlScraper
       var articles = doc.DocumentNode.SelectNodes(@"//article[@class]")
         .Where(hn => hn.Attributes["class"].Value.Split(' ').Contains("post-preview"))
         .ToList();
-      var hrefs = articles.Select(hn => hn.Element("a").Attributes["href"])
+      var hrefs = articles.Select(hn => hn.Descendants("a").First().Attributes["href"])
         .Select(s => CombineUri(baseUrl, HttpUtility.HtmlDecode(s.Value)))
         .ToArray();
       return hrefs;
