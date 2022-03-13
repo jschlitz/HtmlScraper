@@ -20,16 +20,18 @@ namespace HtmlScraper
       {
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-        var baseUrl = args[0];
-        var query = args[1];
+        var baseUrl = "insert base url here";
+        var query = args.Length >= 1 ? args[0] : "";
         if (string.IsNullOrEmpty(query))
         {
-          Console.WriteLine("usage: HtmlScraper [search_term]. Press any key to exit.");
+          Console.WriteLine("usage: HtmlScraper [search_term] [within last X years, default 1]. Press any key to exit.");
           Console.ReadKey();
           return;
         }
-
-
+        var years = int.Parse( args.Length >= 2 ? args[1] : "1");
+        
+        var datePart = years < 1 ? "" : @"+date%3A>" +  (DateTime.Today.AddYears(-1 * years).ToString("yyyy-MM-dd"));
+        
         var baseDir = args.Length >=3 ? args[2] : System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
         if (!Directory.Exists(baseDir)) throw new Exception($"Target directory does not exist: \r{baseDir}");
         baseDir = Path.Combine(baseDir, query);
@@ -47,7 +49,7 @@ namespace HtmlScraper
 
         var pages = new Dictionary<string, bool>();
         var posts = new Dictionary<string, bool>();
-        pages[CombineUri(baseUrl, @"/posts?tags=" + query)] = false;
+        pages[CombineUri(baseUrl, @"/posts?tags=" + query + datePart)] = false;
 
         Console.WriteLine("Getting pages...");
         while (pages.Any(kvp=>!kvp.Value))
@@ -65,7 +67,7 @@ namespace HtmlScraper
               if (!pages.ContainsKey(item)) pages[item] = false; 
             }
 
-            foreach (var item in GetPostPages(doc, baseUrl, query))
+            foreach (var item in GetPostPages(doc, baseUrl, query+datePart))
             {
               if (!posts.ContainsKey(item)) posts[item] = false;
             };
